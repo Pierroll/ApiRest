@@ -61,7 +61,6 @@ jobs:
     name: Auditoría de Seguridad
     runs-on: ubuntu-latest
     needs: [dependency-fix]
-    continue-on-error: true # No bloquear el pipeline por vulnerabilidades
     steps:
       - name: Checkout código
         uses: actions/checkout@v4
@@ -84,41 +83,12 @@ jobs:
           echo "Ejecutando auditoría de seguridad..."
           yarn audit --level moderate || echo "⚠️ Se encontraron vulnerabilidades, pero continuamos..."
 
-      - name: Verificar vulnerabilidades críticas con detalles
+      - name: Verificar vulnerabilidades críticas
         run: |
-          echo "🔍 Analizando vulnerabilidades..."
-
-          # Generar reporte detallado
-          yarn audit --json > audit-report.json || true
-
-          # Mostrar resumen legible
-          echo "📊 Resumen de auditoría:"
-          yarn audit || true
-
-          # Verificar vulnerabilidades críticas específicamente
-          CRITICAL_VULNS=$(yarn audit --level critical --json | grep -c '"type":"auditAdvisory"' || echo "0")
-
-          echo "🔢 Vulnerabilidades críticas encontradas: $CRITICAL_VULNS"
-
-          if [ "$CRITICAL_VULNS" -gt "0" ]; then
-            echo "❌ Se encontraron $CRITICAL_VULNS vulnerabilidades críticas"
-            echo "📋 Detalles de vulnerabilidades críticas:"
-            yarn audit --level critical
-            echo ""
-            echo "🔧 Intentando reparar automáticamente..."
-            yarn audit fix || echo "⚠️ No se pudieron reparar automáticamente"
-            
-            # Verificar después del intento de reparación
-            REMAINING_CRITICAL=$(yarn audit --level critical --json | grep -c '"type":"auditAdvisory"' || echo "0")
-            
-            if [ "$REMAINING_CRITICAL" -gt "0" ]; then
-              echo "❌ Aún quedan $REMAINING_CRITICAL vulnerabilidades críticas sin resolver"
-              echo "⚠️ ADVERTENCIA: Continuando con el pipeline, pero revisa manualmente"
-              # Cambiar exit 1 por warning para no bloquear el desarrollo
-              echo "::warning::Se encontraron vulnerabilidades críticas que requieren atención manual"
-            else
-              echo "✅ Todas las vulnerabilidades críticas fueron resueltas"
-            fi
+          # Solo fallar si hay vulnerabilidades críticas
+          if yarn audit --level critical --json | grep -q '"type":"auditAdvisory"'; then
+            echo "❌ Se encontraron vulnerabilidades críticas"
+            exit 1
           else
             echo "✅ No se encontraron vulnerabilidades críticas"
           fi
