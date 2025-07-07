@@ -1,9 +1,10 @@
+```yaml
 name: CI Pipeline
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 env:
   NODE_ENV: test
   MONGODB_URL: mongodb://localhost:27017/node-boilerplate-test
@@ -26,6 +27,8 @@ jobs:
         run: npm ci
       - name: Wait for MongoDB
         run: npx wait-on tcp:27017 --timeout 30000
+      - name: Run Prettier
+        run: npx prettier --check src/**/*.{js,jsx}
       - name: Run ESLint
         run: npm run lint
       - name: Run tests
@@ -35,3 +38,4 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ./coverage/lcov.info
+```
